@@ -7,6 +7,16 @@
 #include "x86.h"
 #include "elf.h"
 
+//make sure page fault comes from same stack (?)
+//[		]
+//[/////////////]
+//[page fault should be here]
+//[		]
+//[		]
+//[		]
+//
+//returns address of page fault, -1 otherwise
+//(N+1) < rcr2()<ke - N + pgsize
 int
 exec(char *path, char **argv)
 {
