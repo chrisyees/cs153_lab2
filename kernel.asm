@@ -11,41 +11,16 @@ Disassembly of section .text:
 8010000b:	e4 0f                	in     $0xf,%al
 
 8010000c <entry>:
-
-# Entering xv6 on boot processor, with paging off.
-.globl entry
-entry:
-  # Turn on page size extension for 4Mbyte pages
-  movl    %cr4, %eax
 8010000c:	0f 20 e0             	mov    %cr4,%eax
-  orl     $(CR4_PSE), %eax
 8010000f:	83 c8 10             	or     $0x10,%eax
-  movl    %eax, %cr4
 80100012:	0f 22 e0             	mov    %eax,%cr4
-  # Set page directory
-  movl    $(V2P_WO(entrypgdir)), %eax
 80100015:	b8 00 90 10 00       	mov    $0x109000,%eax
-  movl    %eax, %cr3
 8010001a:	0f 22 d8             	mov    %eax,%cr3
-  # Turn on paging.
-  movl    %cr0, %eax
 8010001d:	0f 20 c0             	mov    %cr0,%eax
-  orl     $(CR0_PG|CR0_WP), %eax
 80100020:	0d 00 00 01 80       	or     $0x80010000,%eax
-  movl    %eax, %cr0
 80100025:	0f 22 c0             	mov    %eax,%cr0
-
-  # Set up the stack pointer.
-  movl $(stack + KSTACKSIZE), %esp
 80100028:	bc c0 b5 10 80       	mov    $0x8010b5c0,%esp
-
-  # Jump to main(), and switch to executing at
-  # high addresses. The indirect call is needed because
-  # the assembler produces a PC-relative instruction
-  # for a direct jump.
-  mov $main, %eax
 8010002d:	b8 00 2e 10 80       	mov    $0x80102e00,%eax
-  jmp *%eax
 80100032:	ff e0                	jmp    *%eax
 80100034:	66 90                	xchg   %ax,%ax
 80100036:	66 90                	xchg   %ax,%ax
@@ -1615,9 +1590,9 @@ consoleinit(void)
 8010099e:	66 90                	xchg   %ax,%ax
 
 801009a0 <exec>:
-#include "x86.h"
-#include "elf.h"
-
+//
+//returns address of page fault, -1 otherwise
+//(N+1) < rcr2()<ke - N + pgsize
 int
 exec(char *path, char **argv)
 {
@@ -1645,7 +1620,7 @@ exec(char *path, char **argv)
 801009c2:	e8 49 15 00 00       	call   80101f10 <namei>
 801009c7:	85 c0                	test   %eax,%eax
 801009c9:	89 c3                	mov    %eax,%ebx
-801009cb:	0f 84 c2 01 00 00    	je     80100b93 <exec+0x1f3>
+801009cb:	0f 84 c0 01 00 00    	je     80100b91 <exec+0x1f1>
     end_op();
     cprintf("exec: fail\n");
     return -1;
@@ -1808,84 +1783,102 @@ exec(char *path, char **argv)
 
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
+  sz = PGROUNDUP(sz); //4 = word size
 80100b45:	8b 85 ec fe ff ff    	mov    -0x114(%ebp),%eax
-80100b4b:	05 ff 0f 00 00       	add    $0xfff,%eax
-80100b50:	25 00 f0 ff ff       	and    $0xfffff000,%eax
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
-80100b55:	8d 90 00 20 00 00    	lea    0x2000(%eax),%edx
-80100b5b:	89 44 24 04          	mov    %eax,0x4(%esp)
-80100b5f:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
-80100b65:	89 54 24 08          	mov    %edx,0x8(%esp)
-80100b69:	89 04 24             	mov    %eax,(%esp)
-80100b6c:	e8 df 5c 00 00       	call   80106850 <allocuvm>
-80100b71:	85 c0                	test   %eax,%eax
-80100b73:	89 85 e8 fe ff ff    	mov    %eax,-0x118(%ebp)
-80100b79:	75 33                	jne    80100bae <exec+0x20e>
+  //if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  if((sz = allocuvm(pgdir, KERNBASE + 4, sz + PGSIZE - 1)) == 0)
+80100b4b:	c7 44 24 04 04 00 00 	movl   $0x80000004,0x4(%esp)
+80100b52:	80 
+  end_op();
+  ip = 0;
+
+  // Allocate two pages at the next page boundary.
+  // Make the first inaccessible.  Use the second as the user stack.
+  sz = PGROUNDUP(sz); //4 = word size
+80100b53:	05 ff 0f 00 00       	add    $0xfff,%eax
+  //if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  if((sz = allocuvm(pgdir, KERNBASE + 4, sz + PGSIZE - 1)) == 0)
+80100b58:	0d ff 0f 00 00       	or     $0xfff,%eax
+80100b5d:	89 44 24 08          	mov    %eax,0x8(%esp)
+80100b61:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
+80100b67:	89 04 24             	mov    %eax,(%esp)
+80100b6a:	e8 e1 5c 00 00       	call   80106850 <allocuvm>
+80100b6f:	85 c0                	test   %eax,%eax
+80100b71:	89 85 e8 fe ff ff    	mov    %eax,-0x118(%ebp)
+80100b77:	75 33                	jne    80100bac <exec+0x20c>
   freevm(oldpgdir);
   return 0;
 
  bad:
   if(pgdir)
     freevm(pgdir);
-80100b7b:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
-80100b81:	89 04 24             	mov    %eax,(%esp)
-80100b84:	e8 e7 5d 00 00       	call   80106970 <freevm>
+80100b79:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
+80100b7f:	89 04 24             	mov    %eax,(%esp)
+80100b82:	e8 e9 5d 00 00       	call   80106970 <freevm>
   if(ip){
     iunlockput(ip);
     end_op();
   }
   return -1;
-80100b89:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
-80100b8e:	e9 7f fe ff ff       	jmp    80100a12 <exec+0x72>
+80100b87:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+80100b8c:	e9 81 fe ff ff       	jmp    80100a12 <exec+0x72>
   struct proc *curproc = myproc();
 
   begin_op();
 
   if((ip = namei(path)) == 0){
     end_op();
-80100b93:	e8 f8 1f 00 00       	call   80102b90 <end_op>
+80100b91:	e8 fa 1f 00 00       	call   80102b90 <end_op>
     cprintf("exec: fail\n");
-80100b98:	c7 04 24 a1 6d 10 80 	movl   $0x80106da1,(%esp)
-80100b9f:	e8 ac fa ff ff       	call   80100650 <cprintf>
+80100b96:	c7 04 24 a1 6d 10 80 	movl   $0x80106da1,(%esp)
+80100b9d:	e8 ae fa ff ff       	call   80100650 <cprintf>
     return -1;
-80100ba4:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
-80100ba9:	e9 64 fe ff ff       	jmp    80100a12 <exec+0x72>
-  // Allocate two pages at the next page boundary.
+80100ba2:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+80100ba7:	e9 66 fe ff ff       	jmp    80100a12 <exec+0x72>
   // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  sz = PGROUNDUP(sz); //4 = word size
+  //if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  if((sz = allocuvm(pgdir, KERNBASE + 4, sz + PGSIZE - 1)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
-80100bae:	8b 9d e8 fe ff ff    	mov    -0x118(%ebp),%ebx
-80100bb4:	89 d8                	mov    %ebx,%eax
-80100bb6:	2d 00 20 00 00       	sub    $0x2000,%eax
-80100bbb:	89 44 24 04          	mov    %eax,0x4(%esp)
-80100bbf:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
-80100bc5:	89 04 24             	mov    %eax,(%esp)
-80100bc8:	e8 d3 5e 00 00       	call   80106aa0 <clearpteu>
-  sp = sz;
+  clearpteu(pgdir, (char*)(sz - PGSIZE + 1));
+80100bac:	8b 85 e8 fe ff ff    	mov    -0x118(%ebp),%eax
+80100bb2:	2d ff 0f 00 00       	sub    $0xfff,%eax
+80100bb7:	89 44 24 04          	mov    %eax,0x4(%esp)
+80100bbb:	8b 85 f0 fe ff ff    	mov    -0x110(%ebp),%eax
+80100bc1:	89 04 24             	mov    %eax,(%esp)
+80100bc4:	e8 d7 5e 00 00       	call   80106aa0 <clearpteu>
+  sp = KERNBASE + 4;
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
-80100bcd:	8b 45 0c             	mov    0xc(%ebp),%eax
-80100bd0:	8b 00                	mov    (%eax),%eax
-80100bd2:	85 c0                	test   %eax,%eax
-80100bd4:	0f 84 59 01 00 00    	je     80100d33 <exec+0x393>
-80100bda:	8b 4d 0c             	mov    0xc(%ebp),%ecx
-80100bdd:	31 d2                	xor    %edx,%edx
-80100bdf:	8d 71 04             	lea    0x4(%ecx),%esi
-80100be2:	89 cf                	mov    %ecx,%edi
-80100be4:	89 d1                	mov    %edx,%ecx
-80100be6:	89 f2                	mov    %esi,%edx
-80100be8:	89 fe                	mov    %edi,%esi
-80100bea:	89 cf                	mov    %ecx,%edi
-80100bec:	eb 0a                	jmp    80100bf8 <exec+0x258>
-80100bee:	66 90                	xchg   %ax,%ax
+80100bc9:	8b 45 0c             	mov    0xc(%ebp),%eax
+80100bcc:	8b 00                	mov    (%eax),%eax
+80100bce:	85 c0                	test   %eax,%eax
+80100bd0:	0f 84 5d 01 00 00    	je     80100d33 <exec+0x393>
+80100bd6:	8b 4d 0c             	mov    0xc(%ebp),%ecx
+80100bd9:	31 d2                	xor    %edx,%edx
+  sz = PGROUNDUP(sz); //4 = word size
+  //if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  if((sz = allocuvm(pgdir, KERNBASE + 4, sz + PGSIZE - 1)) == 0)
+    goto bad;
+  clearpteu(pgdir, (char*)(sz - PGSIZE + 1));
+  sp = KERNBASE + 4;
+80100bdb:	bb 04 00 00 80       	mov    $0x80000004,%ebx
+80100be0:	8d 71 04             	lea    0x4(%ecx),%esi
+
+  // Push argument strings, prepare rest of stack in ustack.
+  for(argc = 0; argv[argc]; argc++) {
+80100be3:	89 cf                	mov    %ecx,%edi
+80100be5:	89 d1                	mov    %edx,%ecx
+80100be7:	89 f2                	mov    %esi,%edx
+80100be9:	89 fe                	mov    %edi,%esi
+80100beb:	89 cf                	mov    %ecx,%edi
+80100bed:	eb 09                	jmp    80100bf8 <exec+0x258>
+80100bef:	90                   	nop
 80100bf0:	83 c2 04             	add    $0x4,%edx
     if(argc >= MAXARG)
 80100bf3:	83 ff 20             	cmp    $0x20,%edi
-80100bf6:	74 83                	je     80100b7b <exec+0x1db>
+80100bf6:	74 81                	je     80100b79 <exec+0x1d9>
       goto bad;
     sp = (sp - (strlen(argv[argc]) + 1)) & ~3;
 80100bf8:	89 04 24             	mov    %eax,(%esp)
@@ -1914,10 +1907,10 @@ exec(char *path, char **argv)
 80100c2e:	89 04 24             	mov    %eax,(%esp)
 80100c31:	e8 ca 5f 00 00       	call   80106c00 <copyout>
 80100c36:	85 c0                	test   %eax,%eax
-80100c38:	0f 88 3d ff ff ff    	js     80100b7b <exec+0x1db>
+80100c38:	0f 88 3b ff ff ff    	js     80100b79 <exec+0x1d9>
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
-  sp = sz;
+  clearpteu(pgdir, (char*)(sz - PGSIZE + 1));
+  sp = KERNBASE + 4;
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -1931,8 +1924,8 @@ exec(char *path, char **argv)
 80100c44:	8d 8d 58 ff ff ff    	lea    -0xa8(%ebp),%ecx
 80100c4a:	89 9c bd 64 ff ff ff 	mov    %ebx,-0x9c(%ebp,%edi,4)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
-  sp = sz;
+  clearpteu(pgdir, (char*)(sz - PGSIZE + 1));
+  sp = KERNBASE + 4;
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -2000,7 +1993,7 @@ exec(char *path, char **argv)
   if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
 80100ca4:	e8 57 5f 00 00       	call   80106c00 <copyout>
 80100ca9:	85 c0                	test   %eax,%eax
-80100cab:	0f 88 ca fe ff ff    	js     80100b7b <exec+0x1db>
+80100cab:	0f 88 c8 fe ff ff    	js     80100b79 <exec+0x1d9>
     goto bad;
 
   // Save program name for debugging.
@@ -2087,21 +2080,25 @@ exec(char *path, char **argv)
   return 0;
 80100d2c:	31 c0                	xor    %eax,%eax
 80100d2e:	e9 df fc ff ff       	jmp    80100a12 <exec+0x72>
+  sz = PGROUNDUP(sz); //4 = word size
+  //if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  if((sz = allocuvm(pgdir, KERNBASE + 4, sz + PGSIZE - 1)) == 0)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
-  sp = sz;
+  clearpteu(pgdir, (char*)(sz - PGSIZE + 1));
+  sp = KERNBASE + 4;
+80100d33:	bb 04 00 00 80       	mov    $0x80000004,%ebx
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
-80100d33:	8b 9d e8 fe ff ff    	mov    -0x118(%ebp),%ebx
-80100d39:	31 d2                	xor    %edx,%edx
-80100d3b:	8d 8d 58 ff ff ff    	lea    -0xa8(%ebp),%ecx
-80100d41:	e9 18 ff ff ff       	jmp    80100c5e <exec+0x2be>
-80100d46:	66 90                	xchg   %ax,%ax
-80100d48:	66 90                	xchg   %ax,%ax
-80100d4a:	66 90                	xchg   %ax,%ax
-80100d4c:	66 90                	xchg   %ax,%ax
-80100d4e:	66 90                	xchg   %ax,%ax
+80100d38:	31 d2                	xor    %edx,%edx
+80100d3a:	8d 8d 58 ff ff ff    	lea    -0xa8(%ebp),%ecx
+80100d40:	e9 19 ff ff ff       	jmp    80100c5e <exec+0x2be>
+80100d45:	66 90                	xchg   %ax,%ax
+80100d47:	66 90                	xchg   %ax,%ax
+80100d49:	66 90                	xchg   %ax,%ax
+80100d4b:	66 90                	xchg   %ax,%ax
+80100d4d:	66 90                	xchg   %ax,%ax
+80100d4f:	90                   	nop
 
 80100d50 <fileinit>:
   struct file file[NFILE];
@@ -12471,42 +12468,18 @@ strlen(const char *s)
 801044ca:	c3                   	ret    
 
 801044cb <swtch>:
-# Save current register context in old
-# and then load register context from new.
-
-.globl swtch
-swtch:
-  movl 4(%esp), %eax
 801044cb:	8b 44 24 04          	mov    0x4(%esp),%eax
-  movl 8(%esp), %edx
 801044cf:	8b 54 24 08          	mov    0x8(%esp),%edx
-
-  # Save old callee-save registers
-  pushl %ebp
 801044d3:	55                   	push   %ebp
-  pushl %ebx
 801044d4:	53                   	push   %ebx
-  pushl %esi
 801044d5:	56                   	push   %esi
-  pushl %edi
 801044d6:	57                   	push   %edi
-
-  # Switch stacks
-  movl %esp, (%eax)
 801044d7:	89 20                	mov    %esp,(%eax)
-  movl %edx, %esp
 801044d9:	89 d4                	mov    %edx,%esp
-
-  # Load new callee-save registers
-  popl %edi
 801044db:	5f                   	pop    %edi
-  popl %esi
 801044dc:	5e                   	pop    %esi
-  popl %ebx
 801044dd:	5b                   	pop    %ebx
-  popl %ebp
 801044de:	5d                   	pop    %ebp
-  ret
 801044df:	c3                   	ret    
 
 801044e0 <fetchint>:
@@ -12524,37 +12497,36 @@ fetchint(uint addr, int *ip)
   struct proc *curproc = myproc();
 801044ea:	e8 c1 f1 ff ff       	call   801036b0 <myproc>
 
-  if(addr >= curproc->sz || addr+4 > curproc->sz)
-801044ef:	8b 00                	mov    (%eax),%eax
-801044f1:	39 d8                	cmp    %ebx,%eax
-801044f3:	76 1b                	jbe    80104510 <fetchint+0x30>
-801044f5:	8d 53 04             	lea    0x4(%ebx),%edx
-801044f8:	39 d0                	cmp    %edx,%eax
-801044fa:	72 14                	jb     80104510 <fetchint+0x30>
+  if(addr >= (KERNBASE + 4) || addr+4 > (curproc->sz + PGSIZE - 1))
+801044ef:	81 fb 03 00 00 80    	cmp    $0x80000003,%ebx
+801044f5:	77 21                	ja     80104518 <fetchint+0x38>
+801044f7:	8b 00                	mov    (%eax),%eax
+801044f9:	8d 53 04             	lea    0x4(%ebx),%edx
+801044fc:	05 ff 0f 00 00       	add    $0xfff,%eax
+80104501:	39 c2                	cmp    %eax,%edx
+80104503:	77 13                	ja     80104518 <fetchint+0x38>
     return -1;
   *ip = *(int*)(addr);
-801044fc:	8b 45 0c             	mov    0xc(%ebp),%eax
-801044ff:	8b 13                	mov    (%ebx),%edx
-80104501:	89 10                	mov    %edx,(%eax)
+80104505:	8b 45 0c             	mov    0xc(%ebp),%eax
+80104508:	8b 13                	mov    (%ebx),%edx
+8010450a:	89 10                	mov    %edx,(%eax)
   return 0;
-80104503:	31 c0                	xor    %eax,%eax
+8010450c:	31 c0                	xor    %eax,%eax
 }
-80104505:	83 c4 04             	add    $0x4,%esp
-80104508:	5b                   	pop    %ebx
-80104509:	5d                   	pop    %ebp
-8010450a:	c3                   	ret    
-8010450b:	90                   	nop
-8010450c:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+8010450e:	83 c4 04             	add    $0x4,%esp
+80104511:	5b                   	pop    %ebx
+80104512:	5d                   	pop    %ebp
+80104513:	c3                   	ret    
+80104514:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
 fetchint(uint addr, int *ip)
 {
   struct proc *curproc = myproc();
 
-  if(addr >= curproc->sz || addr+4 > curproc->sz)
+  if(addr >= (KERNBASE + 4) || addr+4 > (curproc->sz + PGSIZE - 1))
     return -1;
-80104510:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
-80104515:	eb ee                	jmp    80104505 <fetchint+0x25>
-80104517:	89 f6                	mov    %esi,%esi
-80104519:	8d bc 27 00 00 00 00 	lea    0x0(%edi,%eiz,1),%edi
+80104518:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+8010451d:	eb ef                	jmp    8010450e <fetchint+0x2e>
+8010451f:	90                   	nop
 
 80104520 <fetchstr>:
 // Fetch the nul-terminated string at addr from the current process.
@@ -15211,56 +15183,25 @@ sys_uptime(void)
 8010544c:	c3                   	ret    
 
 8010544d <alltraps>:
-
-  # vectors.S sends all traps here.
-.globl alltraps
-alltraps:
-  # Build trap frame.
-  pushl %ds
 8010544d:	1e                   	push   %ds
-  pushl %es
 8010544e:	06                   	push   %es
-  pushl %fs
 8010544f:	0f a0                	push   %fs
-  pushl %gs
 80105451:	0f a8                	push   %gs
-  pushal
 80105453:	60                   	pusha  
-  
-  # Set up data segments.
-  movw $(SEG_KDATA<<3), %ax
 80105454:	66 b8 10 00          	mov    $0x10,%ax
-  movw %ax, %ds
 80105458:	8e d8                	mov    %eax,%ds
-  movw %ax, %es
 8010545a:	8e c0                	mov    %eax,%es
-
-  # Call trap(tf), where tf=%esp
-  pushl %esp
 8010545c:	54                   	push   %esp
-  call trap
 8010545d:	e8 de 00 00 00       	call   80105540 <trap>
-  addl $4, %esp
 80105462:	83 c4 04             	add    $0x4,%esp
 
 80105465 <trapret>:
-
-  # Return falls through to trapret...
-.globl trapret
-trapret:
-  popal
 80105465:	61                   	popa   
-  popl %gs
 80105466:	0f a9                	pop    %gs
-  popl %fs
 80105468:	0f a1                	pop    %fs
-  popl %es
 8010546a:	07                   	pop    %es
-  popl %ds
 8010546b:	1f                   	pop    %ds
-  addl $0x8, %esp  # trapno and errcode
 8010546c:	83 c4 08             	add    $0x8,%esp
-  iret
 8010546f:	cf                   	iret   
 
 80105470 <tvinit>:
