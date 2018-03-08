@@ -73,7 +73,7 @@ exec(char *path, char **argv)
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
-  if((sb = allocuvm(pgdir, KERNBASE - PGSIZE, KERNBASE - 4)) == 0)
+  if((sp = allocuvm(pgdir, KERNBASE - PGSIZE, KERNBASE - 4)) == 0)
 	goto bad;
   //if((sb = allocuvm(pgdir, KERNBASE - 4, KERNBASE - PGSIZE)) == 0) 
   //  goto bad;
