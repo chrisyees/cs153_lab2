@@ -684,116 +684,144 @@ memmove(void *vdst, void *vsrc, int n)
     1339:	c3                   	ret    
 
 0000133a <fork>:
+  name: \
+    movl $SYS_ ## name, %eax; \
+    int $T_SYSCALL; \
+    ret
+
+SYSCALL(fork)
     133a:	b8 01 00 00 00       	mov    $0x1,%eax
     133f:	cd 40                	int    $0x40
     1341:	c3                   	ret    
 
 00001342 <exit>:
+SYSCALL(exit)
     1342:	b8 02 00 00 00       	mov    $0x2,%eax
     1347:	cd 40                	int    $0x40
     1349:	c3                   	ret    
 
 0000134a <wait>:
+SYSCALL(wait)
     134a:	b8 03 00 00 00       	mov    $0x3,%eax
     134f:	cd 40                	int    $0x40
     1351:	c3                   	ret    
 
 00001352 <pipe>:
+SYSCALL(pipe)
     1352:	b8 04 00 00 00       	mov    $0x4,%eax
     1357:	cd 40                	int    $0x40
     1359:	c3                   	ret    
 
 0000135a <read>:
+SYSCALL(read)
     135a:	b8 05 00 00 00       	mov    $0x5,%eax
     135f:	cd 40                	int    $0x40
     1361:	c3                   	ret    
 
 00001362 <write>:
+SYSCALL(write)
     1362:	b8 10 00 00 00       	mov    $0x10,%eax
     1367:	cd 40                	int    $0x40
     1369:	c3                   	ret    
 
 0000136a <close>:
+SYSCALL(close)
     136a:	b8 15 00 00 00       	mov    $0x15,%eax
     136f:	cd 40                	int    $0x40
     1371:	c3                   	ret    
 
 00001372 <kill>:
+SYSCALL(kill)
     1372:	b8 06 00 00 00       	mov    $0x6,%eax
     1377:	cd 40                	int    $0x40
     1379:	c3                   	ret    
 
 0000137a <exec>:
+SYSCALL(exec)
     137a:	b8 07 00 00 00       	mov    $0x7,%eax
     137f:	cd 40                	int    $0x40
     1381:	c3                   	ret    
 
 00001382 <open>:
+SYSCALL(open)
     1382:	b8 0f 00 00 00       	mov    $0xf,%eax
     1387:	cd 40                	int    $0x40
     1389:	c3                   	ret    
 
 0000138a <mknod>:
+SYSCALL(mknod)
     138a:	b8 11 00 00 00       	mov    $0x11,%eax
     138f:	cd 40                	int    $0x40
     1391:	c3                   	ret    
 
 00001392 <unlink>:
+SYSCALL(unlink)
     1392:	b8 12 00 00 00       	mov    $0x12,%eax
     1397:	cd 40                	int    $0x40
     1399:	c3                   	ret    
 
 0000139a <fstat>:
+SYSCALL(fstat)
     139a:	b8 08 00 00 00       	mov    $0x8,%eax
     139f:	cd 40                	int    $0x40
     13a1:	c3                   	ret    
 
 000013a2 <link>:
+SYSCALL(link)
     13a2:	b8 13 00 00 00       	mov    $0x13,%eax
     13a7:	cd 40                	int    $0x40
     13a9:	c3                   	ret    
 
 000013aa <mkdir>:
+SYSCALL(mkdir)
     13aa:	b8 14 00 00 00       	mov    $0x14,%eax
     13af:	cd 40                	int    $0x40
     13b1:	c3                   	ret    
 
 000013b2 <chdir>:
+SYSCALL(chdir)
     13b2:	b8 09 00 00 00       	mov    $0x9,%eax
     13b7:	cd 40                	int    $0x40
     13b9:	c3                   	ret    
 
 000013ba <dup>:
+SYSCALL(dup)
     13ba:	b8 0a 00 00 00       	mov    $0xa,%eax
     13bf:	cd 40                	int    $0x40
     13c1:	c3                   	ret    
 
 000013c2 <getpid>:
+SYSCALL(getpid)
     13c2:	b8 0b 00 00 00       	mov    $0xb,%eax
     13c7:	cd 40                	int    $0x40
     13c9:	c3                   	ret    
 
 000013ca <sbrk>:
+SYSCALL(sbrk)
     13ca:	b8 0c 00 00 00       	mov    $0xc,%eax
     13cf:	cd 40                	int    $0x40
     13d1:	c3                   	ret    
 
 000013d2 <sleep>:
+SYSCALL(sleep)
     13d2:	b8 0d 00 00 00       	mov    $0xd,%eax
     13d7:	cd 40                	int    $0x40
     13d9:	c3                   	ret    
 
 000013da <uptime>:
+SYSCALL(uptime)
     13da:	b8 0e 00 00 00       	mov    $0xe,%eax
     13df:	cd 40                	int    $0x40
     13e1:	c3                   	ret    
 
 000013e2 <shm_open>:
+SYSCALL(shm_open)
     13e2:	b8 16 00 00 00       	mov    $0x16,%eax
     13e7:	cd 40                	int    $0x40
     13e9:	c3                   	ret    
 
 000013ea <shm_close>:
+SYSCALL(shm_close)	
     13ea:	b8 17 00 00 00       	mov    $0x17,%eax
     13ef:	cd 40                	int    $0x40
     13f1:	c3                   	ret    
