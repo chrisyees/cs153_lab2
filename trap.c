@@ -47,7 +47,7 @@ trap(struct trapframe *tf)
   }
 
   switch(tf->trapno){
-  case T_IRQ0 + IRQ_TIMER:
+ case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
@@ -77,7 +77,18 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
+  case T_PGFLT:
+    //panic("PAGE FAULT NOOO");
+    if(PGROUNDDOWN(rcr2()) == myproc()->sb - PGSIZE)
+    {
+	//panic("WE FOUND AN ACTUAL PAGE FAULT");
+	if(allocuvm(myproc() -> pgdir, myproc() ->sb - PGSIZE, myproc()->sb)== 0){
+	panic("NO MORE SPACE TO MAKE PAGES");
+	}
+	myproc()->sb = myproc()->sb - PGSIZE; 
+	break;
+    }
+ 
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
