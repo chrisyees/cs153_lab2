@@ -78,10 +78,10 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT:
-    //panic("PAGE FAULT NOOO");
+    //panic("PAGE FAULT");
     if(PGROUNDDOWN(rcr2()) == myproc()->sb - PGSIZE)
     {
-	//panic("WE FOUND AN ACTUAL PAGE FAULT");
+	panic("WE FOUND AN ACTUAL PAGE FAULT");
 	if(allocuvm(myproc() -> pgdir, myproc() ->sb - PGSIZE, myproc()->sb)== 0){
 	panic("NO MORE SPACE TO MAKE PAGES");
 	}

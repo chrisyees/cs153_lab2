@@ -29,9 +29,22 @@ void shminit() {
 }
 
 int shm_open(int id, char **pointer) {
-
+	int x;
 //you write this
-
+	initlock(&(shm_table.lock), "SHM lock");
+	acquire(&(shm_table.lock));
+	//Case 1
+	for(i = 0; i < 64; i+=)
+	{
+		if(shm_table.shm_pages[i].id == id)
+		{
+			x = mappages(myproc()->PGDIR, PGROUNDUP(myproc()->sz, V2P(shm_table.shm_pages[i].frame, PTE_W|PTE_U);
+		return (char *)x;	
+		}
+	}
+	//Case 2
+	release(&(shm_table.lock));
+	
 
 
 

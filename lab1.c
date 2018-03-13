@@ -3,7 +3,7 @@
 
 int fib(int x) {
 	if(x == 0)
-		return 0;
+		return 1;
 	if(x == 1)
 		return 1;
 	if(x == 2)
@@ -11,7 +11,7 @@ int fib(int x) {
 	if(x == 3)
 		return 3;
         printf(1,"\n%d",x);
-	return fib(x - 1) * fib(x - 2) * fib(x - 3) * fib(x - 4);
+	return fib(x - 1) + fib(x - 2) + fib(x - 3) + fib(x - 4);
 }
 
 int main(int argc, char *argv[])
