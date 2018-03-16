@@ -21,19 +21,19 @@ struct shm_cnt *counter;
 //which we can now use but will be shared between the two processes
   
 shm_open(1,(char **)&counter);
- 
-//  printf(1,"%s returned successfully from shm_open with counter %x\n", pid? "Child": "Parent", counter); 
+printf(1,"hi"); 
+ // printf(1,"%s returned successfully from shm_open with counter %x\n", pid? "Child": "Parent", counter); 
   for(i = 0; i < 10000; i++)
     {
      uacquire(&(counter->lock));
      counter->cnt++;
      urelease(&(counter->lock));
-
+printf(1,"%d \n", i);
 //print something because we are curious and to give a chance to switch process
      if(i%1000 == 0)
        printf(1,"Counter in %s is %d at address %x\n",pid? "Parent" : "Child", counter->cnt, counter);
 }
-  
+printf(1,"part2");  
   if(pid)
      {
        printf(1,"Counter in parent is %d\n",counter->cnt);
